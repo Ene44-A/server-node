@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRUD Simple</title>
+    <style>
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>CRUD Simple</h1>
+    <form id="itemForm">
+      <input type="text" id="itemName" placeholder="Item Name" required />
+      <button type="submit">Add Item</button>
+    </form>
+    <ul id="itemsList"></ul>
+
+    <form id="editForm" class="hidden">
+      <input
+        type="text"
+        id="editItemName"
+        placeholder="New Item Name"
+        required
+      />
+      <button type="submit">Update Item</button>
+      <button type="button" id="cancelEdit">Cancel</button>
+    </form>
+
+    <script>
+      const form = document.getElementById("itemForm");
+      const itemsList = document.getElementById("itemsList");
+      const editForm = document.getElementById("editForm");
+      const editItemName = document.getElementById("editItemName");
+      let currentEditId = null;
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const itemName = document.getElementById("itemName").value;
+        const response = await fetch("/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: Date.now().toString(), name: itemName }),
+        });
+        const newItem = await response.json();
+        addItemToList(newItem);
+        form.reset();
+      });
+
+      editForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newName = editItemName.value;
+        const response = await fetch(`/items/${currentEditId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: currentEditId, name: newName }),
+        });
+        const updatedItem = await response.json();
+        document.querySelector(
+          `li[data-id='${currentEditId}'] span`
+        ).textContent = updatedItem.name;
+        editForm.classList.add("hidden");
+        form.classList.remove("hidden");
+      });
+
+      document.getElementById("cancelEdit").addEventListener("click", () => {
+        editForm.classList.add("hidden");
+        form.classList.remove("hidden");
+      });
+
+      async function fetchItems() {
+        const response = await fetch("/items");
+        const items = await response.json();
+        items.forEach(addItemToList);
+      }
+
+      function addItemToList(item) {
+        const li = document.createElement("li");
+        li.dataset.id = item.id;
+
+        const span = document.createElement("span");
+        span.textContent = item.name;
+        li.appendChild(span);
+
+        const editButton = document.createElement("button");
+        editButton.textContent = "Edit";
+        editButton.onclick = () => showEditForm(item.id, item.name);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.onclick = () => deleteItem(item.id);
+
+        li.appendChild(editButton);
+        li.appendChild(deleteButton);
+        itemsList.appendChild(li);
+      }
+
+      function showEditForm(id, name) {
+        currentEditId = id;
+        editItemName.value = name;
+        editForm.classList.remove("hidden");
+        form.classList.add("hidden");
+      }
+
+      async function deleteItem(id) {
+        await fetch(`/items/${id}`, { method: "DELETE" });
+        document.querySelector(`li[data-id='${id}']`).remove();
+      }
+
+      fetchItems();
+    </script>
+  </body>
+</html>
